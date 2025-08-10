@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+notebooks/events.csv
+notebooks/item_properties_part1.1.csv
+notebooks/item_properties_part2.csv
+notebooks/events.csv
+notebooks/item_properties_part2.csv
+notebooks/item_properties_part1.1.csv
