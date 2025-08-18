@@ -1,0 +1,20 @@
+artifacts_config:
+  artifacts_dir: artifacts
+
+data_ingestion_config:
+  dataset_download_url: https://drive.google.com/uc?id=1zOw7qlAMvRFFERlGV2O93mXS42fmU_3P
+  dataset_dir: dataset
+  ingested_dir: ingested_data
+  raw_data_dir: raw_data
+
+
+data_preprocessing_config:  
+  cleaned_data_dir: cleaned
+  interactions_file: events.csv
+  products_file: item_props_csv
+  users_file: category_csv   
+
+
+  events_csv  # expected attribute
+            item_props_path = self.config.item_props_csv
+            categories_path = self.config.category_csv

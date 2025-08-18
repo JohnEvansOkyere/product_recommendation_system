@@ -1,6 +1,20 @@
-pandas
+certifi
+charset-normalizer
+idna
+joblib
+lightfm
 numpy
+pandas
+python-dateutil
+pytz
+requests
 scikit-learn
+scipy
+six
+threadpoolctl
+tzdata
+urllib3
 matplotlib
 seaborn
-plotly
+
+-e .
