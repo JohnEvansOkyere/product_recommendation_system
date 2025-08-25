@@ -3,86 +3,94 @@ import sys
 import pickle
 import pandas as pd
 import torch
-import json
 import streamlit as st
-import gdown
-from pathlib import Path
-from datetime import datetime
+import json
 import plotly.express as px
 import plotly.graph_objects as go
-
-from product_recommender.components.stage_03_model_trainer import RecommendationModel
-from product_recommender.pipeline.training_pipeline import TrainingPipeline
-from product_recommender.logger.log import logging
+from datetime import datetime
+import gdown
 
 # --------------------------
-# Configuration
+# Google Drive Configuration
+# --------------------------
+GOOGLE_DRIVE_FOLDER_ID = "1scZVdXRnZ6VPvkXjAocUPZoYMAXTU3tx"
+
+# --------------------------
+# Project Directories
 # --------------------------
 MODEL_DIR = "artifacts/model"
 CLEANED_DIR = "artifacts/cleaned"
-GOOGLE_DRIVE_FOLDER_ID = "1scZVdXRnZ6VPvkXjAocUPZoYMAXTU3tx"
 
-# Ensure directories exist
+# Make sure directories exist
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(CLEANED_DIR, exist_ok=True)
 
 # --------------------------
-# Helper Functions
+# Utility Functions
 # --------------------------
-def download_model_from_drive(file_name):
-    """Download file from Google Drive folder if it doesn't exist locally."""
-    file_path = os.path.join(MODEL_DIR, file_name)
-    if not os.path.exists(file_path):
+def get_artifact_path(file_name, local_dir):
+    """Return local path if exists, otherwise download from Google Drive."""
+    local_path = os.path.join(local_dir, file_name)
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+        return local_path
+    else:
+        st.info(f"{file_name} not found locally. Downloading from Google Drive...")
         folder_url = f"https://drive.google.com/drive/folders/{GOOGLE_DRIVE_FOLDER_ID}"
-        st.info(f"Downloading {file_name} from Google Drive...")
-        gdown.download_folder(folder_url, output=MODEL_DIR, quiet=False)
-    return file_path
+        gdown.download_folder(folder_url, output=local_dir, quiet=False)
+        return os.path.join(local_dir, file_name)
 
+# --------------------------
+# Load Artifacts
+# --------------------------
 @st.cache_resource
 def load_artifacts():
-    """Load all models, encoders, and data artifacts dynamically from Google Drive."""
+    """Load trained model and artifacts"""
     try:
         # Load encoders
-        with open(download_model_from_drive('user_encoder.pkl'), 'rb') as f:
+        with open(get_artifact_path('user_encoder.pkl', MODEL_DIR), 'rb') as f:
             user_encoder = pickle.load(f)
-        with open(download_model_from_drive('item_encoder.pkl'), 'rb') as f:
+        with open(get_artifact_path('item_encoder.pkl', MODEL_DIR), 'rb') as f:
             item_encoder = pickle.load(f)
-        with open(download_model_from_drive('category_encoder.pkl'), 'rb') as f:
+        with open(get_artifact_path('category_encoder.pkl', MODEL_DIR), 'rb') as f:
             category_encoder = pickle.load(f)
-
+        
         # Load test data
-        X_test = pd.read_csv(download_model_from_drive('X_test.csv'))
-        y_test = pd.read_csv(download_model_from_drive('y_test.csv'))
-
+        X_test = pd.read_csv(get_artifact_path('X_test.csv', MODEL_DIR))
+        y_test = pd.read_csv(get_artifact_path('y_test.csv', MODEL_DIR))
+        
         # Load engineered features
-        engineered_features = pd.read_csv(download_model_from_drive('engineered_features.csv'))
-
+        engineered_features = pd.read_csv(get_artifact_path('engineered_features.csv', CLEANED_DIR))
+        
         # Load evaluation results
+        evaluation_file = get_artifact_path('evaluation_results.json', MODEL_DIR)
         evaluation_results = {}
-        evaluation_file = download_model_from_drive('evaluation_results.json')
         if os.path.exists(evaluation_file):
             with open(evaluation_file, 'r') as f:
                 evaluation_results = json.load(f)
+        
+        # Import your model classes
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        from product_recommender.components.stage_03_model_trainer import RecommendationModel
 
-        # Load model
+        # Define model parameters
         num_users = len(user_encoder.classes_)
         num_items = len(item_encoder.classes_)
         num_categories = len(category_encoder.classes_)
-        num_numerical_features = len(X_test.columns) - 3  # 3 categorical features encoded
-
+        num_numerical_features = len(X_test.columns) - 3  # 3 encoded categorical features
+        
+        # Load model
         model = RecommendationModel(
-            num_users=num_users,
-            num_items=num_items,
-            num_categories=num_categories,
+            num_users, num_items, num_categories, 
             num_numerical_features=num_numerical_features
         )
-        model_path = download_model_from_drive('recommendation_model.pth')
+        
+        model_path = get_artifact_path('recommendation_model.pth', MODEL_DIR)
         if os.path.exists(model_path):
             model.load_state_dict(torch.load(model_path, map_location='cpu'))
             model.eval()
         else:
             model = None
-
+        
         return {
             'model': model,
             'user_encoder': user_encoder,
@@ -96,7 +104,6 @@ def load_artifacts():
             'num_items': num_items,
             'num_categories': num_categories
         }
-
     except Exception as e:
         st.error(f"Error loading artifacts: {str(e)}")
         return None

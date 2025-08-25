@@ -220,6 +220,5 @@ artifacts/
 *.ipynb
 notebooks/*.ipynb
 artifacts/
-!artifacts/model/
 
 
