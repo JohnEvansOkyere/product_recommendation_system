@@ -219,8 +219,7 @@ artifacts/
 *.pkl
 *.ipynb
 notebooks/*.ipynb
-artifacts/*
+artifacts/
 !artifacts/model/
-!artifacts/model/**
 
 
