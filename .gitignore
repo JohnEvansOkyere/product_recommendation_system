@@ -217,3 +217,5 @@ artifacts/
 *.csv
 *.ipynb
 *.pkl
+*.ipynb
+notebooks/*.ipynb
