@@ -10,8 +10,16 @@ import json
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import yaml
+
 import random
 
+
+# Load config
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+    
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
