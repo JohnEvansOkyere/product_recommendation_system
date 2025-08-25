@@ -2,6 +2,8 @@
 import os
 import sys
 import pandas as pd
+import numpy as np
+import datetime
 from product_recommender.logger.log import logging
 from product_recommender.config.configuration import AppConfiguration
 from product_recommender.exception.exception_handler import AppException
@@ -11,114 +13,144 @@ class DataPreprocessor:
     def __init__(self, app_config: AppConfiguration = AppConfiguration()):
         try:
             self.config = app_config.get_data_preprocessing_config()
-            # config expected to expose paths: raw_dir and cleaned_dir (or file paths)
+            logging.info(f"{'='*20}Data Preprocessing log started.{'='*20}")
+        except Exception as e:
+            raise AppException(e, sys) from e
+        
+    def preprocess_data(self):
+        try:
+            logging.info("Starting data preprocessing...")
+
+            # Load raw data
+            events_path = os.path.join(self.config.raw_data_dir, self.config.events_csv_file)
+            item_properties_part1_path = os.path.join(self.config.raw_data_dir, self.config.item_props_csv_file)
+            item_properties_part2_path = os.path.join(self.config.raw_data_dir, 'item_properties_part2.csv')
+            category_tree_path = os.path.join(self.config.raw_data_dir, self.config.category_csv_file)
+            
+            logging.info("Loading datasets...")
+            df_events = pd.read_csv(events_path)
+            df_item_properties_part1 = pd.read_csv(item_properties_part1_path)
+            df_item_properties_part2 = pd.read_csv(item_properties_part2_path)
+            df_category_tree = pd.read_csv(category_tree_path)
+            
+            # Concatenate the two item properties DataFrames
+            df_item_properties = pd.concat([df_item_properties_part1, df_item_properties_part2], ignore_index=True)
+            
+            logging.info(f"Events DataFrame shape: {df_events.shape}")
+            logging.info(f"Item Properties DataFrame shape: {df_item_properties.shape}")
+            logging.info(f"Category Tree DataFrame shape: {df_category_tree.shape}")
+            
+            # 1. Handle missing values
+            logging.info("Handling missing values...")
+            print("Missing values before handling:")
+            print("df_events:\n", df_events.isnull().sum())
+            print("df_item_properties:\n", df_item_properties.isnull().sum())
+            print("df_category_tree:\n", df_category_tree.isnull().sum())
+            
+            # Drop rows with missing critical values
+            df_events.dropna(subset=['itemid', 'event'], inplace=True)
+            df_item_properties.dropna(subset=['value', 'property'], inplace=True)
+            
+            print("\nMissing values after handling:")
+            print("df_events:\n", df_events.isnull().sum())
+            print("df_item_properties:\n", df_item_properties.isnull().sum())
+            print("df_category_tree:\n", df_category_tree.isnull().sum())
+            
+            # 2. Handle duplicate entries
+            logging.info("Removing duplicate entries...")
+            print("\nShape before dropping duplicates:")
+            print("df_events:", df_events.shape)
+            print("df_item_properties:", df_item_properties.shape)
+            print("df_category_tree:", df_category_tree.shape)
+            
+            df_events.drop_duplicates(inplace=True)
+            df_item_properties.drop_duplicates(inplace=True)
+            df_category_tree.drop_duplicates(inplace=True)
+            
+            print("\nShape after dropping duplicates:")
+            print("df_events:", df_events.shape)
+            print("df_item_properties:", df_item_properties.shape)
+            print("df_category_tree:", df_category_tree.shape)
+            
+            # 3. Handle anomalies and data types
+            logging.info("Converting timestamps and handling data types...")
+            # Convert timestamp to datetime objects
+            df_events['timestamp'] = pd.to_datetime(df_events['timestamp'], unit='ms')
+            df_item_properties['timestamp'] = pd.to_datetime(df_item_properties['timestamp'], unit='ms')
+            
+            # Ensure 'itemid' in df_events is integer type after dropping NaNs
+            df_events['itemid'] = df_events['itemid'].astype(int)
+            
+            # 4. Extract categoryid from item_properties
+            logging.info("Extracting item categories...")
+            df_item_categories = df_item_properties[df_item_properties['property'] == 'categoryid'][['itemid', 'value']]
+            df_item_categories.rename(columns={'value': 'categoryid'}, inplace=True)
+            # Convert categoryid to integer, coerce errors will turn non-numeric to NaN
+            df_item_categories['categoryid'] = pd.to_numeric(df_item_categories['categoryid'], errors='coerce')
+            df_item_categories.dropna(subset=['categoryid'], inplace=True)
+            df_item_categories['categoryid'] = df_item_categories['categoryid'].astype(int)
+            df_item_categories.drop_duplicates(inplace=True)
+            
+            logging.info(f"Item Categories DataFrame shape: {df_item_categories.shape}")
+            
+            # 5. Extract item availability
+            logging.info("Extracting item availability...")
+            df_item_availability = df_item_properties[df_item_properties['property'] == 'available'][['itemid', 'value']]
+            df_item_availability.rename(columns={'value': 'available'}, inplace=True)
+            # Convert 'available' to integer (0 or 1)
+            df_item_availability['available'] = pd.to_numeric(df_item_availability['available'], errors='coerce').fillna(-1).astype(int)
+            df_item_availability.drop_duplicates(subset=['itemid'], keep='last', inplace=True)
+            
+            # 6. Count other properties per item
+            logging.info("Counting other item properties...")
+            df_other_properties_count = df_item_properties[~df_item_properties['property'].isin(['categoryid', 'available'])].groupby('itemid').size().reset_index(name='other_properties_count')
+            
+            # 7. Calculate category levels from category tree
+            logging.info("Calculating category hierarchy levels...")
+            category_parent_map = df_category_tree.set_index('categoryid')['parentid'].to_dict()
+            
+            def get_category_level(category_id, level=0):
+                if pd.isna(category_id) or category_id not in category_parent_map:
+                    return level
+                parent_id = category_parent_map[category_id]
+                if pd.isna(parent_id):
+                     return level
+                return get_category_level(parent_id, level + 1)
+            
+            # Apply category level calculation
+            df_item_categories['category_level'] = df_item_categories['categoryid'].apply(lambda x: get_category_level(x) if pd.notna(x) else -1)
+
+            # Save cleaned data
+            logging.info("Saving cleaned datasets...")
+            os.makedirs(self.config.cleaned_dir, exist_ok=True)
+            
+            # Save cleaned dataframes
+            df_events.to_csv(os.path.join(self.config.cleaned_dir, 'events_clean.csv'), index=False)
+            df_item_properties.to_csv(os.path.join(self.config.cleaned_dir, 'item_properties_clean.csv'), index=False)
+            df_category_tree.to_csv(os.path.join(self.config.cleaned_dir, 'category_tree_clean.csv'), index=False)
+            df_item_categories.to_csv(os.path.join(self.config.cleaned_dir, 'item_categories_clean.csv'), index=False)
+            df_item_availability.to_csv(os.path.join(self.config.cleaned_dir, 'item_availability_clean.csv'), index=False)
+            df_other_properties_count.to_csv(os.path.join(self.config.cleaned_dir, 'other_properties_count_clean.csv'), index=False)
+            
+            logging.info("Data preprocessing completed successfully!")
+            logging.info(f"{'='*20}Data Preprocessing log completed.{'='*20} \n\n")
+            
+            return {
+                'events': df_events,
+                'item_properties': df_item_properties,
+                'category_tree': df_category_tree,
+                'item_categories': df_item_categories,
+                'item_availability': df_item_availability,
+                'other_properties_count': df_other_properties_count
+            }
+
         except Exception as e:
             raise AppException(e, sys) from e
 
-    def _ensure_dir(self, path: str):
-        os.makedirs(path, exist_ok=True)
-
-    def _read_csv_safe(self, path: str, **kwargs):
-        return pd.read_csv(path, **kwargs)
-    def preprocess_data(self):
-        try:
-            self._ensure_dir(self.config.cleaned_dir)
-
-            # Load raw data files
-            events_path = self.config.events_csv
-            item_props_path = self.config.item_props_csv
-            categories_path = self.config.category_csv
-
-            logging.info("Reading raw files")
-            events = self._read_csv_safe(events_path, parse_dates=["timestamp"])
-            item_props = self._read_csv_safe(item_props_path, parse_dates=["timestamp"])
-            categories = self._read_csv_safe(categories_path)
-
-            logging.info("Parsing events")
-            events_clean = self._parse_events(events)
-            logging.info(f"Events cleaned shape: {events_clean.shape}")
-
-            logging.info("Parsing item properties")
-            item_props_clean = self._parse_item_props(item_props)
-            logging.info(f"Item props cleaned shape: {item_props_clean.shape}")
-
-            logging.info("Parsing categories")
-            categories_clean = self._parse_categories(categories)
-            logging.info(f"Categories cleaned shape: {categories_clean.shape}")
-
-            # Save cleaned dataframes
-            events_clean.to_csv(os.path.join(self.config.cleaned_dir, "events_clean.csv"), index=False)
-            item_props_clean.to_csv(os.path.join(self.config.cleaned_dir, "item_props_clean.csv"), index=False)
-            categories_clean.to_csv(os.path.join(self.config.cleaned_dir, "category_clean.csv"), index=False)
-
-            logging.info(f"Saved cleaned files to {self.config.cleaned_dir}")
-
-        
-    def _parse_events(self, events: pd.DataFrame) -> pd.DataFrame:
-        # normalize timestamp & event types; drop rows with missing essential fields
-        events = events.copy()
-        events["timestamp"] = pd.to_datetime(events["timestamp"], utc=True, errors="coerce")
-        events["event"] = events["event"].astype(str).str.lower().str.strip()
-        # fix dtypes when possible
-        events = events.dropna(subset=["visitorid", "itemid"])
-        events["visitorid"] = events["visitorid"].astype(int)
-        events["itemid"] = events["itemid"].astype(int)
-        # transaction flag
-        events["has_transaction"] = (events["event"] == "transaction").astype(int)
-        return events
-
-    def _parse_item_props(self, item_props: pd.DataFrame) -> pd.DataFrame:
-        df = item_props.copy()
-        df.rename(columns={"property": "property_id"}, inplace=True)
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-        df = df.dropna(subset=["itemid"])
-        df["itemid"] = df["itemid"].astype(int)
-        # keep raw value for later parsing
-        df["value"] = df["value"].astype(str)
-        return df
-
-    def _parse_categories(self, categories: pd.DataFrame) -> pd.DataFrame:
-        df = categories.copy()
-        # normalize column names (assume columns categoryid,parentid)
-        df = df.rename(columns=lambda x: x.strip())
-        if "parentid" in df.columns:
-            df["parentid"] = df["parentid"].fillna(-1).astype(int)
-        return df
-
     def run(self):
+        """Main method to run the preprocessing pipeline"""
         try:
-            self._ensure_dir(self.config.cleaned_dir)
-
-            # load raw files (config should point to actual file paths or dir)
-            events_path = self.config.events_csv  # expected attribute
-            item_props_path = self.config.item_props_csv
-            categories_path = self.config.category_csv
-
-            logging.info("Reading raw files")
-            events = pd.read_csv(self.data_preprocessing_config.events_csv, parse_dates=["timestamp"])
-            item_props = pd.read_csv(self.data_preprocessing_config.item_props_csv, parse_dates=["timestamp"])
-            categories = pd.read_csv(self.data_preprocessing_config.category_csv)
-    
-
-            logging.info("Parsing events")
-            events_clean = self._parse_events(events)
-            logging.info(f"Events cleaned shape: {events_clean.shape}")
-
-            logging.info("Parsing item properties")
-            item_props_clean = self._parse_item_props(item_props)
-            logging.info(f"Item props cleaned shape: {item_props_clean.shape}")
-
-            logging.info("Parsing categories")
-            categories_clean = self._parse_categories(categories)
-            logging.info(f"Categories cleaned shape: {categories_clean.shape}")
-
-            # Save cleaned csvs
-            events_clean.to_csv(os.path.join(self.config.cleaned_dir, "events_clean.csv"), index=False)
-            item_props_clean.to_csv(os.path.join(self.config.cleaned_dir, "item_props_clean.csv"), index=False)
-            categories_clean.to_csv(os.path.join(self.config.cleaned_dir, "category_clean.csv"), index=False)
-
-            logging.info(f"Saved cleaned files to {self.config.cleaned_dir}")
-
+            return self.preprocess_data()
         except Exception as e:
             raise AppException(e, sys) from e
 
@@ -128,7 +160,7 @@ if __name__ == "__main__":
         cfg = AppConfiguration()
         obj = DataPreprocessor(cfg)
         logging.info("Starting data preprocessing")
-        obj.run()
+        result = obj.run()
         logging.info("Data preprocessing finished successfully")
     except Exception as err:
         raise

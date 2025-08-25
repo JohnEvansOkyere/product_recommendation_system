@@ -212,3 +212,5 @@ notebooks/events.csv
 notebooks/item_properties_part2.csv
 notebooks/item_properties_part1.1.csv
 notebooks.category_tree.csv
+notebooks/cleaned/
+artifacts/

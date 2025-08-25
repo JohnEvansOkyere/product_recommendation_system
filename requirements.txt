@@ -2,7 +2,6 @@ certifi
 charset-normalizer
 idna
 joblib
-lightfm
 numpy
 pandas
 python-dateutil
@@ -16,5 +15,9 @@ tzdata
 urllib3
 matplotlib
 seaborn
+torch
+gdown
+streamlit
+plotly
 
 -e .

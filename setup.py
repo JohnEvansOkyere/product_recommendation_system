@@ -4,9 +4,9 @@ with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 ## edit below variables as per your requirements -
-REPO_NAME = "Book-Recommendation-System"
+REPO_NAME = "Product-Recommendation-System"
 AUTHOR_USER_NAME = "johnEvansOkyere"
-SRC_REPO = "books_recommender"
+SRC_REPO = "products_recommender"
 LIST_OF_REQUIREMENTS = []
 
 

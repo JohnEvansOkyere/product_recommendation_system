@@ -7,14 +7,31 @@ data_ingestion_config:
   ingested_dir: ingested_data
   raw_data_dir: raw_data
 
+data_preprocessing_config:
+  raw_data_dir: dataset/ingested_data
+  cleaned_dir: cleaned
+  events_csv_file: events.csv
+  item_props_csv_file: item_properties_part1.1.csv
+  category_csv_file: category_tree.csv
 
-data_preprocessing_config:  
-  cleaned_data_dir: cleaned
-  interactions_file: events.csv
-  products_file: item_props_csv
-  users_file: category_csv   
+data_engineering_config:
+  cleaned_dir: cleaned
+  half_life_days: 14
+
+model_training_config:
+  model_dir: artifacts/model
+  cleaned_dir: cleaned
+  batch_size: 1024
+  learning_rate: 0.001
+  num_epochs: 10
+  embedding_dim_user: 50
+  embedding_dim_item: 50
+  embedding_dim_category: 20
+
+model_evaluation_config:
+  model_dir: artifacts/model
+  k: 10
+  sample_users: 5000
 
 
-  events_csv  # expected attribute
-            item_props_path = self.config.item_props_csv
-            categories_path = self.config.category_csv
+     
