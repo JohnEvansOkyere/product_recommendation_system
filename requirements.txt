@@ -21,4 +21,4 @@ streamlit
 plotly
 pyyaml
 
--e .
+# -e .
