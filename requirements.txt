@@ -19,6 +19,6 @@ torch
 gdown
 streamlit
 plotly
-pyyaml
+pyyaml==6.0.1
 
 -e .
