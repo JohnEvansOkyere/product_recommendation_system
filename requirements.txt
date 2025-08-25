@@ -19,6 +19,6 @@ torch
 gdown
 streamlit
 plotly
-pyyaml
+PyYAML
 
-# -e .
+ -e .
