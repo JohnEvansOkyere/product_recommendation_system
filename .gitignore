@@ -214,3 +214,6 @@ notebooks/item_properties_part1.1.csv
 notebooks.category_tree.csv
 notebooks/cleaned/
 artifacts/
+*.csv
+*.ipynb
+*.pkl
