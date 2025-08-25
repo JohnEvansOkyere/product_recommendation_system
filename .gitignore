@@ -221,4 +221,6 @@ artifacts/
 notebooks/*.ipynb
 artifacts/*
 !artifacts/model/
+!artifacts/model/**
+
 
