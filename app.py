@@ -75,11 +75,11 @@ def load_artifacts():
         engineered_features = pd.read_csv(engineered_features_path)
         
         # Load evaluation results
-        evaluation_file_path = get_artifact_path('evaluation_results.json', MODEL_DIR)
-        evaluation_results = {}
-        if os.path.exists(evaluation_file_path):
-            with open(evaluation_file_path, 'r') as f:
-                evaluation_results = json.load(f)
+        # evaluation_file_path = get_artifact_path('evaluation_results.json', MODEL_DIR)
+        # evaluation_results = {}
+        # if os.path.exists(evaluation_file_path):
+        #     with open(evaluation_file_path, 'r') as f:
+        #         evaluation_results = json.load(f)
         
         # Import your model classes
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -111,7 +111,7 @@ def load_artifacts():
             'X_test': X_test,
             'y_test': y_test,
             'engineered_features': engineered_features,
-            'evaluation_results': evaluation_results,
+            #'evaluation_results': evaluation_results,
             'num_users': num_users,
             'num_items': num_items,
             'num_categories': num_categories
@@ -297,26 +297,26 @@ def get_category_based_recommendations(selected_category, artifacts, k=10):
 # --------------------------
 # Visualization Functions
 # --------------------------
-def plot_evaluation_metrics(evaluation_results):
-    """Plot evaluation metrics"""
-    if not evaluation_results:
-        return None
+# def plot_evaluation_metrics(evaluation_results):
+#     """Plot evaluation metrics"""
+#     if not evaluation_results:
+#         return None
     
-    metrics = ['precision_at_k', 'recall_at_k', 'ndcg_at_k']
-    values = [evaluation_results.get(metric, 0) for metric in metrics]
+#     metrics = ['precision_at_k', 'recall_at_k', 'ndcg_at_k']
+#     values = [evaluation_results.get(metric, 0) for metric in metrics]
     
-    fig = go.Figure(data=[
-        go.Bar(x=metrics, y=values, marker_color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-    ])
+#     fig = go.Figure(data=[
+#         go.Bar(x=metrics, y=values, marker_color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+#     ])
     
-    fig.update_layout(
-        title="Model Performance Metrics",
-        xaxis_title="Metrics",
-        yaxis_title="Score",
-        yaxis=dict(range=[0, 1])
-    )
+#     fig.update_layout(
+#         title="Model Performance Metrics",
+#         xaxis_title="Metrics",
+#         yaxis_title="Score",
+#         yaxis=dict(range=[0, 1])
+#     )
     
-    return fig
+#     return fig
 
 def plot_user_activity_distribution(artifacts):
     """Plot user activity distribution"""
@@ -379,7 +379,7 @@ def plot_item_popularity_distribution(artifacts):
 # --------------------------
 def main():
     st.set_page_config(
-        page_title="VEXAAI-Style Product Recommendation System",
+        page_title="VexaAI Product Recommendation System",
         page_icon="🛒",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -456,7 +456,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # Header
-    st.markdown('<h1 class="main-header">🛒 VEXAAI-Style Product Recommendation System</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🛒 VexaAI Product Recommendation System</h1>', unsafe_allow_html=True)
     
     # Initialize session state
     if 'selected_items' not in st.session_state:
@@ -784,26 +784,26 @@ def show_system_analytics(artifacts):
             """, unsafe_allow_html=True)
     
     # Model performance
-    if artifacts['evaluation_results']:
-        st.subheader("📈 Model Performance")
+    # if artifacts['evaluation_results']:
+    #     st.subheader("📈 Model Performance")
         
-        results = artifacts['evaluation_results']
+    #     results = artifacts['evaluation_results']
         
-        col1, col2, col3 = st.columns(3)
+    #     col1, col2, col3 = st.columns(3)
         
-        with col1:
-            st.metric("Precision@10", f"{results.get('precision_at_k', 0):.4f}")
+    #     with col1:
+    #         st.metric("Precision@10", f"{results.get('precision_at_k', 0):.4f}")
         
-        with col2:
-            st.metric("Recall@10", f"{results.get('recall_at_k', 0):.4f}")
+    #     with col2:
+    #         st.metric("Recall@10", f"{results.get('recall_at_k', 0):.4f}")
         
-        with col3:
-            st.metric("NDCG@10", f"{results.get('ndcg_at_k', 0):.4f}")
+    #     with col3:
+    #         st.metric("NDCG@10", f"{results.get('ndcg_at_k', 0):.4f}")
         
-        # Plot metrics
-        fig = plot_evaluation_metrics(results)
-        if fig:
-            st.plotly_chart(fig, use_container_width=True)
+    #     # Plot metrics
+    #     fig = plot_evaluation_metrics(results)
+    #     if fig:
+    #         st.plotly_chart(fig, use_container_width=True)
     
     # Data insights
     st.subheader("📊 Data Insights")
