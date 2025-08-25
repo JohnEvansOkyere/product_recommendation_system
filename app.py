@@ -514,9 +514,13 @@ def show_browse_shop(artifacts):
             # Create product card
             is_selected = item['itemid'] in st.session_state.selected_items
             
+            # Debug: Check if itemid exists
+            item_id = item.get('itemid', 'N/A')
+            
             st.markdown(f"""
             <div class="product-card {'selected' if is_selected else ''}">
-                <h4>🆔 Item {item['itemid']}</h4>
+                <h4>🆔 Item {item_id}</h4>
+                <p><strong>Item ID:</strong> <span style="color: #667eea; font-weight: bold; font-size: 1.2em;">{item_id}</span></p>
                 <p><strong>Category:</strong> {item['categoryid']}</p>
                 <p><strong>Views:</strong> {item['item_views']:,}</p>
                 <p><strong>Add to Cart:</strong> {item['item_addtocarts']:,}</p>
@@ -534,7 +538,7 @@ def show_browse_shop(artifacts):
                         'item_id': item['itemid'],
                         'timestamp': datetime.now()
                     })
-            else:
+                else:
                     st.session_state.selected_items.append(item['itemid'])
                     st.session_state.user_interactions.append({
                         'action': 'add',
@@ -639,9 +643,13 @@ def show_my_recommendations(artifacts):
                 # Display recommendations
                 for i, rec in enumerate(recommendations, 1):
                     with st.container():
+                        # Get item ID from different possible field names
+                        item_id = rec.get('item_id', rec.get('itemid', 'N/A'))
+                        
                         st.markdown(f"""
                         <div class="recommendation-card">
-                            <h4>🥇 #{i} - Item {rec['item_id']}</h4>
+                            <h4>🥇 #{i} - Item {item_id}</h4>
+                            <p><strong>Item ID:</strong> <span style="color: #667eea; font-weight: bold; font-size: 1.2em;">{item_id}</span></p>
                             <p><strong>Prediction Score:</strong> {rec.get('score', 'N/A')}</p>
                             <p><strong>Category:</strong> {rec.get('category_id', rec.get('categoryid', 'N/A'))}</p>
                             <p><strong>Total Interactions:</strong> {rec.get('total_interactions', rec.get('total_item_interactions', 'N/A')):,}</p>
@@ -651,12 +659,12 @@ def show_my_recommendations(artifacts):
                         """, unsafe_allow_html=True)
                         
                         # Add to cart button for recommendations
-                        if st.button(f"Add to Cart", key=f"rec_btn_{rec['item_id']}"):
-                            if rec['item_id'] not in st.session_state.selected_items:
-                                st.session_state.selected_items.append(rec['item_id'])
+                        if st.button(f"Add to Cart", key=f"rec_btn_{item_id}"):
+                            if item_id not in st.session_state.selected_items:
+                                st.session_state.selected_items.append(item_id)
                                 st.session_state.user_interactions.append({
                                     'action': 'add_from_recommendation',
-                                    'item_id': rec['item_id'],
+                                    'item_id': item_id,
                                     'timestamp': datetime.now()
                                 })
                                 st.rerun()
@@ -675,9 +683,13 @@ def show_my_recommendations(artifacts):
             for i, item in enumerate(popular_items[:10]):
                 col_idx = i % 5
                 with cols[col_idx]:
+                    # Get item ID for popular items
+                    item_id = item.get('itemid', 'N/A')
+                    
                     st.markdown(f"""
                     <div class="product-card">
-                        <h4>🆔 Item {item['itemid']}</h4>
+                        <h4>🆔 Item {item_id}</h4>
+                        <p><strong>Item ID:</strong> <span style="color: #667eea; font-weight: bold; font-size: 1.2em;">{item_id}</span></p>
                         <p><strong>Category:</strong> {item['categoryid']}</p>
                         <p><strong>Views:</strong> {item['item_views']:,}</p>
                         <p><strong>Add to Cart:</strong> {item['item_addtocarts']:,}</p>
@@ -738,7 +750,7 @@ def show_system_analytics(artifacts):
             <div class="metric-card">
                 <h3>🎯 Precision@10</h3>
                 <h2>N/A</h2>
-                            </div>
+            </div>
             """, unsafe_allow_html=True)
     
     # Model performance
